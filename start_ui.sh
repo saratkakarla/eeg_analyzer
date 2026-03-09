@@ -24,11 +24,12 @@ fi
 sleep 2
 
 # Start the UI server
-echo "Starting UI server..."
-cd /Users/saratk/sashi/eeg
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "Starting UI server from: $SCRIPT_DIR"
+cd "$SCRIPT_DIR"
 
 # Activate virtual environment and start the server
-source /Users/saratk/sashi/eeg/.venv/bin/activate
+source "$SCRIPT_DIR/.venv/bin/activate"
 python ui_app.py &
 
 # Get the PID of the background process
