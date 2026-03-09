@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EEG Activity Detector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: white;
+            min-height: 100vh;
+            padding: 20px;
+            display: block;
+        }
+
+        .container {
+            background: transparent;
+            border-radius: 12px;
+            box-shadow: none;
+            width: 100%;
+            padding: 40px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+            background: linear-gradient(135deg, #1a3a5c 0%, #2d5a8f 50%, #1a3a5c 100%);
+            padding: 30px 40px;
+            margin-left: -40px;
+            margin-right: -40px;
+            margin-top: -40px;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .control-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 16px;
+            margin-bottom: 30px;
+            align-items: flex-end;
+        }
+
+        .btn-run-selected {
+            background: linear-gradient(135deg, #2d5a8f 0%, #1e3a5f 100%);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn-run-selected:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(45, 90, 143, 0.4);
+        }
+
+        .btn-run-selected:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-run-all {
+            background: linear-gradient(135deg, #3a7a3a 0%, #1e5c1e 100%);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn-run-all:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(58, 122, 58, 0.4);
+        }
+
+        .btn-run-all:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .model-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            position: relative;
+        }
+
+        .model-card.default-model {
+            border-color: #2d5a8f;
+        }
+
+        .model-card-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #2d5a8f;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .model-card-label {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .model-card-label.attentive { color: #3a9a5c; }
+        .model-card-label.non-attentive { color: #c0392b; }
+
+        .model-card-confidence {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .model-card-windows {
+            font-size: 11px;
+            color: #999;
+            margin-top: 6px;
+        }
+
+        .default-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #2d5a8f;
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .overall-status {
+            text-align: center;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .overall-status.attentive { background: #eafaf1; color: #1e8449; border: 2px solid #a9dfbf; }
+        .overall-status.non-attentive { background: #fdedec; color: #922b21; border: 2px solid #f1948a; }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select, button {
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        select {
+            background: white;
+            color: #333;
+            cursor: pointer;
+            font-family: Tahoma, sans-serif;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #2d5a8f;
+            box-shadow: 0 0 0 3px rgba(45, 90, 143, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #2d5a8f 0%, #1e3a5f 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(45, 90, 143, 0.4);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .output-section {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            display: none;
+        }
+
+        .output-section.visible {
+            display: block;
+        }
+
+        .output-header {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .output-content {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #333;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .output-content pre {
+            margin: 0;
+        }
+
+        .error {
+            background: #fee;
+            border-color: #f88;
+            color: #c33;
+        }
+
+        .success {
+            background: #efe;
+            border-color: #8f8;
+            color: #3a3;
+        }
+
+        .prediction-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .summary-card-title {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .summary-card-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d5a8f;
+        }
+
+        .file-name-header {
+            background: linear-gradient(135deg, #2d5a8f 0%, #1e3a5f 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            margin: -20px -20px 20px -20px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .gradient-bar-container {
+            margin: 30px 0;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .gradient-bar-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .gradient-bar {
+            height: 60px;
+            background: linear-gradient(90deg, #ff6b6b 0%, #ffd93d 50%, #6bcf7f 100%);
+            border-radius: 8px;
+            position: relative;
+            overflow: visible;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 2px solid #e0e0e0;
+        }
+
+        .gradient-bar-pointer {
+            position: absolute;
+            top: -8px;
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 12px solid #333;
+            transform: translateX(-50%);
+            transition: left 0.5s ease;
+        }
+
+        .gradient-bar-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+        }
+
+        .gradient-bar-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .gradient-bar-label-left {
+            color: #ff6b6b;
+        }
+
+        .gradient-bar-label-center {
+            color: #ffd93d;
+        }
+
+        .gradient-bar-label-right {
+            color: #6bcf7f;
+        }
+
+        .result-summary {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .result-summary.visible {
+            display: block;
+        }
+
+        .result-summary-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #2d5a8f;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .detailed-analysis-btn {
+            padding: 12px 20px;
+            background: #2d5a8f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .detailed-analysis-btn:hover {
+            background: #1e3a5f;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(45, 90, 143, 0.4);
+        }
+
+        .detailed-section {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .detailed-section.visible {
+            display: block;
+        }
+
+        .detailed-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detailed-output {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #333;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .copy-btn {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #2d5a8f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #1e3a5f;
+        }
+
+        @media (max-width: 768px) {
+            .control-panel {
+                grid-template-columns: 1fr 1fr;
+            }
+            .btn-run-selected, .btn-run-all {
+                grid-column: span 1;
+            }
+
+            .model-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .gradient-bar {
+                height: 50px;
+            }
+
+            .summary-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 EEG Activity Detector</h1>
+
+        <div class="control-panel">
+            <div class="form-group">
+                <label for="test-file">Select Test Data File</label>
+                <select id="test-file">
+                    <option value="">-- Choose a file --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="model-select">Select Model</label>
+                <select id="model-select">
+                    <option value="">-- Loading models... --</option>
+                </select>
+            </div>
+
+            <button class="btn-run-selected" id="run-btn" onclick="runPrediction()">▶ Run Prediction</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 15px; color: #667eea; font-weight: 600;">Processing... This may take a moment</p>
+        </div>
+
+        <!-- Result Summary Section -->
+        <div class="result-summary" id="result-summary">
+            <div class="file-name-header" id="file-name-header">📄 File Name</div>
+
+            <!-- Overall Status (majority vote) -->
+            <div class="overall-status" id="overall-status"></div>
+
+            <!-- Gradient Bar (based on selected or default model) -->
+            <div class="gradient-bar-container">
+                <div class="gradient-bar-label" id="gradient-bar-label">Attention Score</div>
+                <div class="gradient-bar" id="gradient-bar">
+                    <div class="gradient-bar-pointer" id="gradient-bar-pointer"></div>
+                    <div class="gradient-bar-value" id="gradient-bar-value">0%</div>
+                </div>
+                <div class="gradient-bar-labels">
+                    <span class="gradient-bar-label-left">NON-ATTENTIVE</span>
+                    <span class="gradient-bar-label-right">ATTENTIVE</span>
+                </div>
+            </div>
+
+            <!-- Per-Model Cards -->
+            <div class="result-summary-title">Model Predictions</div>
+            <div class="model-grid" id="model-grid"></div>
+
+            <!-- Detailed Analysis Button -->
+            <button class="detailed-analysis-btn" onclick="toggleDetailedAnalysis()">📊 Show Detailed Analysis</button>
+
+            <!-- Detailed Analysis Section -->
+            <div class="detailed-section" id="detailed-section">
+                <div class="detailed-section-title">Detailed Analysis Report</div>
+                <div class="detailed-output" id="detailed-output"></div>
+                <button class="copy-btn" onclick="copyDetailedOutput()">📋 Copy Report</button>
+            </div>
+        </div>
+
+        <!-- Error Output Section -->
+        <div class="output-section" id="output-section">
+            <div class="output-header">Error Details:</div>
+            <div class="output-content" id="output-content"></div>
+            <button class="copy-btn" onclick="copyOutput()">📋 Copy Output</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTestFiles();
+            loadModels();
+        });
+
+        async function loadTestFiles() {
+            try {
+                const response = await fetch('/api/test-files');
+                const data = await response.json();
+                const select = document.getElementById('test-file');
+                data.files.forEach(file => {
+                    const option = document.createElement('option');
+                    option.value = file;
+                    option.textContent = file;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                showError('Failed to load test files');
+            }
+        }
+
+        async function loadModels() {
+            try {
+                const response = await fetch('/api/models');
+                const data = await response.json();
+                const select = document.getElementById('model-select');
+                select.innerHTML = '';
+                data.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model + (model === data.default ? ' (Default)' : '');
+                    if (model === data.default) option.selected = true;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                document.getElementById('model-select').innerHTML = '<option value="">-- Failed to load --</option>';
+            }
+        }
+
+        async function runPrediction() {
+            const testFile = document.getElementById('test-file').value;
+            if (!testFile) { alert('Please select a test data file'); return; }
+
+            const selectedModel = document.getElementById('model-select').value;
+            if (!selectedModel) { alert('Please select a model'); return; }
+
+            const runBtn = document.getElementById('run-btn');
+            const loading = document.getElementById('loading');
+            const resultSummary = document.getElementById('result-summary');
+            const outputSection = document.getElementById('output-section');
+
+            runBtn.disabled = true;
+            loading.style.display = 'block';
+            resultSummary.classList.remove('visible');
+            outputSection.style.display = 'none';
+
+            try {
+                const body = { file: testFile, model: selectedModel };
+
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    displayResult(result, testFile);
+                } else {
+                    showError(result.error || 'Unknown error occurred');
+                }
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                runBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayResult(result, testFile) {
+            document.getElementById('result-summary').classList.add('visible');
+            document.getElementById('detailed-section').classList.remove('visible');
+            document.querySelector('.detailed-analysis-btn').textContent = '📊 Show Detailed Analysis';
+
+            document.getElementById('file-name-header').textContent = `📄 ${testFile}`;
+
+            // Overall status (majority vote)
+            const overall = result.overall_status;
+            const overallEl = document.getElementById('overall-status');
+            overallEl.textContent = `Overall: ${overall}`;
+            overallEl.className = 'overall-status ' + (overall === 'ATTENTIVE' ? 'attentive' : 'non-attentive');
+
+            // Gradient bar using default/selected model
+            const def = result.default_result;
+            const score = def ? (def.attentive_windows / def.n_windows) * 100 : 50;
+            updateGradientBar(Math.max(0, Math.min(100, score)));
+            const barLabel = result.default_model
+                ? `Attention Score — ${result.default_model}`
+                : 'Attention Score';
+            document.getElementById('gradient-bar-label').textContent = barLabel;
+
+            // Per-model cards
+            const grid = document.getElementById('model-grid');
+            grid.innerHTML = '';
+            const defaultModel = result.default_model;
+            Object.entries(result.models).forEach(([name, res]) => {
+                const isDefault = name === defaultModel;
+                const card = document.createElement('div');
+                card.className = 'model-card' + (isDefault ? ' default-model' : '');
+                if (res.error) {
+                    card.innerHTML = `
+                        <div class="model-card-name">${name}</div>
+                        <div class="model-card-label" style="color:#999">ERROR</div>
+                        <div class="model-card-confidence">${res.error}</div>`;
+                } else {
+                    const labelClass = res.label === 'ATTENTIVE' ? 'attentive' : 'non-attentive';
+                    card.innerHTML = `
+                        ${isDefault ? '<span class="default-badge">Default</span>' : ''}
+                        <div class="model-card-name">${name}</div>
+                        <div class="model-card-label ${labelClass}">${res.label}</div>
+                        <div class="model-card-confidence">Confidence: ${res.confidence.toFixed(1)}%</div>
+                        <div class="model-card-windows">
+                            ${res.attentive_windows} attentive / ${res.non_attentive_windows} non-attentive
+                            (${res.n_windows} windows)
+                        </div>`;
+                }
+                grid.appendChild(card);
+            });
+
+            // Detailed output
+            let report = `File: ${testFile}\n${'='.repeat(60)}\n`;
+            Object.entries(result.models).forEach(([name, res]) => {
+                report += `\nModel: ${name}\n${'-'.repeat(40)}\n`;
+                if (res.error) {
+                    report += `  ERROR: ${res.error}\n`;
+                } else {
+                    report += `  Prediction:   ${res.label}\n`;
+                    report += `  Confidence:   ${res.confidence.toFixed(2)}%\n`;
+                    report += `  Windows:      ${res.attentive_windows} attentive, ${res.non_attentive_windows} non-attentive (${res.n_windows} total)\n`;
+                    report += `  Avg prob:     ATTENTIVE=${res.avg_prob_attentive.toFixed(2)}%, NON-ATTENTIVE=${res.avg_prob_non_attentive.toFixed(2)}%\n`;
+                    report += `  Conf max/min/std: ${res.max_confidence.toFixed(2)}% / ${res.min_confidence.toFixed(2)}% / ${res.std_confidence.toFixed(2)}%\n`;
+                }
+            });
+            report += `\nOverall (majority vote): ${result.overall_status}\n`;
+            document.getElementById('detailed-output').textContent = report;
+
+            document.getElementById('result-summary').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function updateGradientBar(percentage) {
+            const pointer = document.getElementById('gradient-bar-pointer');
+            const value = document.getElementById('gradient-bar-value');
+            pointer.style.left = percentage + '%';
+            value.textContent = percentage.toFixed(1) + '%';
+            value.style.left = percentage + '%';
+            value.style.color = (percentage < 40 || percentage > 60) ? 'white' : '#333';
+        }
+
+        function toggleDetailedAnalysis() {
+            const section = document.getElementById('detailed-section');
+            const btn = document.querySelector('.detailed-analysis-btn');
+            const visible = section.classList.toggle('visible');
+            btn.textContent = visible ? '📊 Hide Detailed Analysis' : '📊 Show Detailed Analysis';
+            if (visible) section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function showError(msg) {
+            const outputSection = document.getElementById('output-section');
+            document.getElementById('output-content').textContent = 'Error: ' + msg;
+            outputSection.style.display = 'block';
+            outputSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function copyOutput() {
+            navigator.clipboard.writeText(document.getElementById('output-content').textContent)
+                .then(() => flashBtn(event.target, '✓ Copied!'));
+        }
+
+        function copyDetailedOutput() {
+            navigator.clipboard.writeText(document.getElementById('detailed-output').textContent)
+                .then(() => flashBtn(event.target, '✓ Copied!'));
+        }
+
+        function flashBtn(btn, text) {
+            const orig = btn.textContent;
+            btn.textContent = text;
+            setTimeout(() => btn.textContent = orig, 2000);
+        }
+    </script>
+</body>
+</html>

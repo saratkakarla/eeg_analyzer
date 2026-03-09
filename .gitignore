@@ -1,0 +1,29 @@
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Model artifacts (large binary files)
+all_models.joblib
+data/cleaned_reference_data.csv
+
+# Results output files
+*.results
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local Claude settings
+data/.claude/
