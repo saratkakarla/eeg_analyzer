@@ -8,9 +8,13 @@ __pycache__/
 *.py[cod]
 *.pyo
 
-# Model artifacts (large binary files)
+# Model artifacts (large binary files) and large training data
 all_models.joblib
 data/cleaned_reference_data.csv
+
+# Large training data files (>100 MB — exceeds GitHub limit)
+# Download separately or generate from your own EEG recordings
+data/reference_data.csv
 
 # Results output files
 *.results
